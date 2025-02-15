@@ -4,7 +4,7 @@ import { useGLTF } from "@react-three/drei";
 export default function Car(props) {
   const { nodes, materials } = useGLTF("/car.glb");
   return (
-    <group {...props} dispose={null} rotation={[0, -Math.PI, 0]}>
+    <group {...props} dispose={null}>
       <group rotation={[-Math.PI / 2, 0, 0]}>
         <mesh
           geometry={nodes.Object_2.geometry}

@@ -1,223 +1,179 @@
-import React, { useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import Car from "./Car";
 import { CapsuleCollider, RigidBody } from "@react-three/rapier";
-import { Vector3, Quaternion } from "three";
+import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
+
 import { useKeyboardControls } from "@react-three/drei";
 import { MathUtils } from "three/src/math/MathUtils";
-import Car from "./Car";
-
-// Helper functions for smooth rotations
-const normalizeAngle = (angle) => {
-  while (angle > Math.PI) angle -= 2 * Math.PI;
-  while (angle < -Math.PI) angle += 2 * Math.PI;
-  return angle;
-};
-
-const lerpAngle = (start, end, t) => {
-  start = normalizeAngle(start);
-  end = normalizeAngle(end);
-
-  if (Math.abs(end - start) > Math.PI) {
-    if (end > start) {
-      start += 2 * Math.PI;
-    } else {
-      end += 2 * Math.PI;
-    }
-  }
-
-  return normalizeAngle(start + (end - start) * t);
-};
 
 const CarController = () => {
-  const rb = useRef(); // Reference to the RigidBody of the car
-  const container = useRef(); // Reference to the container group
-  const cameraTarget = useRef(); // Reference to the camera target
-  const cameraPosition = useRef(); // Reference to the camera position
-  const [, get] = useKeyboardControls(); // Keyboard controls
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth < 640);
+    };
 
-  const speed = 10; // Base speed of the car
-  const turnSpeed = 0.05; // Rotation speed of the car
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  const WALK_SPEED = 20;
+  const RUN_SPEED = 30;
+  const ROTATION_SPEED = isSmallScreen ? 0.02 : 0.1;
+  //   const { WALK_SPEED, RUN_SPEED, ROTATION_SPEED } = useControls("Car Control", {
+  //     WALK_SPEED: { value: 0.8, min: 0.1, max: 10, step: 0.1 },
+  //     RUN_SPEED: { value: 1.6, min: 0.2, max: 30, step: 0.1 },
+  //     ROTATION_SPEED: {
+  //       value: degToRad(0.5),
+  //       min: degToRad(0.1),
+  //       max: degToRad(5),
+  //       step: degToRad(0.1),
+  //     },
+  //   });
 
+  const rb = useRef();
+  const container = useRef();
+  const character = useRef();
+  const rotationTarget = useRef(0);
+  const cameraTarget = useRef();
+  const cameraPosition = useRef();
+  const cameraworldPosition = useRef(new Vector3());
+  const cameraLookAtWorldPosition = useRef(new Vector3());
+  const cameraLookAt = useRef(new Vector3());
+  const [, get] = useKeyboardControls();
   const isClicking = useRef(false);
-  const movement = useRef({ x: 0, z: 0 });
-  const touchPoints = useRef({});
-  const targetRotation = useRef(0); // Target rotation for smooth interpolation
+  const touchStart = useRef({ x: 0, y: 0 });
+  const touchEnd = useRef({ x: 0, y: 0 });
+  const isTouching = useRef(false);
 
   useEffect(() => {
     const onMouseDown = (e) => {
       isClicking.current = true;
     };
-
     const onMouseUp = (e) => {
       isClicking.current = false;
-      movement.current.x = 0;
-      movement.current.z = 0;
     };
 
     const onTouchStart = (e) => {
-      isClicking.current = true;
-      e.preventDefault(); // Prevents long-press selection
+      isTouching.current = true;
+      touchStart.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+    };
+
+    const onTouchMove = (e) => {
+      if (isTouching.current) {
+        touchEnd.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+        };
+      }
     };
 
     const onTouchEnd = (e) => {
-      isClicking.current = false;
-      movement.current.x = 0;
-      movement.current.z = 0;
+      isTouching.current = false;
+      touchStart.current = { x: 0, y: 0 };
+      touchEnd.current = { x: 0, y: 0 };
     };
 
     document.addEventListener("mousedown", onMouseDown);
     document.addEventListener("mouseup", onMouseUp);
-    document.addEventListener("touchstart", onTouchStart, { passive: false });
+    document.addEventListener("touchstart", onTouchStart);
+    document.addEventListener("touchmove", onTouchMove);
     document.addEventListener("touchend", onTouchEnd);
 
     return () => {
       document.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("mouseup", onMouseUp);
       document.removeEventListener("touchstart", onTouchStart);
-      document.removeEventListener("touchend", onTouchEnd);
-    };
-  }, []);
-
-  useEffect(() => {
-    const onMouseMove = (e) => {
-      if (isClicking.current) {
-        // Calculate movement based on mouse position relative to screen center
-        const screenCenterX = window.innerWidth / 2;
-        const screenCenterY = window.innerHeight / 2;
-        movement.current.x = (e.clientX - screenCenterX) / screenCenterX;
-        movement.current.z = (e.clientY - screenCenterY) / screenCenterY;
-      }
-    };
-
-    const onTouchMove = (e) => {
-      Array.from(e.touches).forEach((touch) => {
-        touchPoints.current[touch.identifier] = touch;
-      });
-
-      const primaryTouch =
-        touchPoints.current[Object.keys(touchPoints.current)[0]];
-      if (primaryTouch) {
-        // Calculate movement based on touch position relative to screen center
-        const screenCenterX = window.innerWidth / 2;
-        const screenCenterY = window.innerHeight / 2;
-        movement.current.x =
-          (primaryTouch.clientX - screenCenterX) / screenCenterX;
-        movement.current.z =
-          (primaryTouch.clientY - screenCenterY) / screenCenterY;
-      }
-    };
-
-    const onTouchEnd = (e) => {
-      Array.from(e.changedTouches).forEach((touch) => {
-        delete touchPoints.current[touch.identifier];
-      });
-
-      if (Object.keys(touchPoints.current).length === 0) {
-        movement.current.x = 0;
-        movement.current.z = 0;
-      }
-    };
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("touchmove", onTouchMove);
-    document.addEventListener("touchend", onTouchEnd);
-
-    return () => {
-      document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("touchmove", onTouchMove);
       document.removeEventListener("touchend", onTouchEnd);
     };
   }, []);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, mouse }) => {
     if (rb.current) {
-      const { forward, backward, left, right } = get(); // Get keyboard input states
+      const vel = rb.current.linvel();
+      const movement = {
+        x: 0,
+        z: 0,
+      };
 
-      const velocity = rb.current.linvel(); // Get current linear velocity
-      const rotation = rb.current.rotation(); // Get current rotation
-
-      // Calculate the direction vector based on the car's rotation
-      const direction = new Vector3(0, 0, 0);
-
-      if (forward || movement.current.z < -0.5) {
-        direction.z -= 1; // Move forward along the negative Z-axis
+      if (get().forward) {
+        movement.z = -1;
       }
-      if (backward || movement.current.z > 0.5) {
-        direction.z += 1; // Move backward along the positive Z-axis
-      }
-      if (left || movement.current.x > 0.5) {
-        direction.x -= 1; // Move left along the negative X-axis
-      }
-      if (right || movement.current.x < -0.5) {
-        direction.x += 1; // Move right along the positive X-axis
+      if (get().backward) {
+        movement.z = 1;
       }
 
-      // Normalize the direction vector to ensure consistent speed in all directions
-      direction.normalize();
+      let speed = get().run ? RUN_SPEED : WALK_SPEED;
 
-      // Apply the car's rotation to the direction vector
-      direction.applyQuaternion(rotation);
-
-      // Calculate the final velocity
-      velocity.x = direction.x * speed;
-      velocity.z = direction.z * speed;
-
-      // Apply left/right rotation
-      if (left || movement.current.x > 0.5) {
-        targetRotation.current += turnSpeed; // Rotate left
-      } else if (right || movement.current.x < -0.5) {
-        targetRotation.current -= turnSpeed; // Rotate right
+      if (isClicking.current) {
+        movement.x = -mouse.x;
+        movement.z = -mouse.y;
       }
 
-      // Smoothly interpolate the car's rotation using lerpAngle
-      const currentRotation = rotation.y;
-      const smoothedRotation = lerpAngle(
-        currentRotation,
-        targetRotation.current,
-        0.1
-      );
-      rotation.y = smoothedRotation;
+      if (isTouching.current) {
+        const deltaX = touchEnd.current.x - touchStart.current.x;
+        const deltaY = touchEnd.current.y - touchStart.current.y;
 
-      // Update the RigidBody's velocity and rotation
-      rb.current.setLinvel(velocity, true);
-      rb.current.setRotation(rotation, true);
+        // Swipe up/down for forward/backward movement
+        if (Math.abs(deltaY) > Math.abs(deltaX)) {
+          movement.z = deltaY > 0 ? 1 : -1; // Swipe up for forward, swipe down for backward
+        }
 
-      // CAMERA LOGIC
-      // Get the car's position using translation()
-      const carPosition = new Vector3();
-      const carTranslation = rb.current.translation(); // Get the car's position as a Vector3
-      carPosition.set(carTranslation.x, carTranslation.y, carTranslation.z);
+        // Swipe left/right for rotation
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          rotationTarget.current += ROTATION_SPEED * (deltaX > 0 ? -1 : 1); // Swipe right for right turn, swipe left for left turn
+        }
+      }
 
-      // Calculate the camera's position behind the car
-      const cameraOffset = new Vector3(0, 4, 8); // Adjust these values for desired camera distance
-      cameraOffset.applyQuaternion(rotation); // Apply the car's rotation to the offset
-      const targetCameraPosition = carPosition.clone().add(cameraOffset);
+      if (get().left) {
+        movement.x = 1;
+      }
+      if (get().right) {
+        movement.x = -1;
+      }
 
-      // Smoothly move the camera to the target position
-      camera.position.lerp(targetCameraPosition, 0.1);
+      if (movement.x !== 0) {
+        rotationTarget.current += ROTATION_SPEED * movement.x;
+      }
 
-      // Make the camera look at the car
-      camera.lookAt(carPosition);
+      if (movement.x !== 0 || movement.z !== 0) {
+        vel.x = Math.sin(rotationTarget.current) * speed * movement.z;
+        vel.z = Math.cos(rotationTarget.current) * speed * movement.z;
+      }
+
+      rb.current.setLinvel(vel, true);
+    }
+
+    // CAMERA
+    container.current.rotation.y = MathUtils.lerp(
+      container.current.rotation.y,
+      rotationTarget.current,
+      0.1
+    );
+    cameraPosition.current.getWorldPosition(cameraworldPosition.current);
+    camera.position.lerp(cameraworldPosition.current, 0.1);
+    if (cameraTarget.current) {
+      cameraTarget.current.getWorldPosition(cameraLookAtWorldPosition.current);
+      cameraLookAt.current.lerp(cameraLookAtWorldPosition.current, 0.1);
+      camera.lookAt(cameraLookAt.current);
     }
   });
 
   return (
-    <>
-      <RigidBody
-        ref={rb}
-        colliders="hull" // Use a hull collider for the car
-        mass={1} // Set the mass of the car
-        position={[0, 0.5, 0]} // Initial position of the car
-        lockRotations={false} // Allow rotation
-      >
-        <group ref={container}>
-          <group ref={cameraTarget} />
-          <group ref={cameraPosition} />
-          <Car colliders={false} /> {/* Render the Car component */}
+    <RigidBody colliders={false} lockRotations ref={rb}>
+      <group ref={container}>
+        <group ref={cameraTarget} position-z={-5.5} rotation-y={Math.PI} />
+        <group ref={cameraPosition} position-y={10} position-z={18} />
+        <group ref={character} rotation-y={Math.PI}>
+          <Car scale={2.18} position-y={-0.25} />
         </group>
-        <CapsuleCollider args={[0, 0]} />
-      </RigidBody>
-    </>
+      </group>
+      <CapsuleCollider args={[0.08, 0.15]} />
+    </RigidBody>
   );
 };
 

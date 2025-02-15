@@ -4,12 +4,11 @@ import { Canvas } from "@react-three/fiber";
 import {
   Environment,
   KeyboardControls,
-  OrbitControls,
+  //   OrbitControls,
   OrthographicCamera,
 } from "@react-three/drei";
 
 import { Physics } from "@react-three/rapier";
-
 import Racetrack from "./Racetrack";
 import CarController from "./CarController";
 
@@ -40,7 +39,7 @@ const Experience = () => {
   const shadowCameraRef = useRef();
   return (
     <KeyboardControls map={keyboardMap}>
-      <Canvas camera={{ position: [0, 0, 10], fov: 80 }} shadows>
+      <Canvas camera={{ position: [0, 5, 10], fov: 60 }} shadows>
         {/* <OrbitControls /> */}
         <Environment preset="sunset" />
         <directionalLight
@@ -61,8 +60,8 @@ const Experience = () => {
           />
         </directionalLight>
         <Physics>
-          <CarController />
           <Racetrack />
+          <CarController />
         </Physics>
       </Canvas>
     </KeyboardControls>

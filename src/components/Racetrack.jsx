@@ -5,14 +5,13 @@ import { RigidBody } from "@react-three/rapier";
 export default function Racetrack(props) {
   const { nodes, materials } = useGLTF("/racetrack.glb");
   return (
-    <group
-      {...props}
-      dispose={null}
-      position={[100, -22, 70]}
-      rotation={[0, 1.6, 0]}
-    >
-      <RigidBody type="fixed" colliders="trimesh" name="ground">
-        <group rotation={[-Math.PI / 2, 0, 0]}>
+    <group {...props} dispose={null}>
+      <RigidBody type="fixed" colliders={"trimesh"} name="ground">
+        <group
+          rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+          position={[165, -40, 130]}
+          scale={1.719}
+        >
           <mesh
             geometry={nodes.Object_2.geometry}
             material={materials.material_0}
