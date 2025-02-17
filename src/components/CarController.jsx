@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import Car from "./Car";
-import { CapsuleCollider, RigidBody } from "@react-three/rapier";
+import { RigidBody } from "@react-three/rapier";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
-
 import { useKeyboardControls } from "@react-three/drei";
 import { MathUtils } from "three/src/math/MathUtils";
 
-const CarController = () => {
+const CarController = ({ joystickInput }) => {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
   useEffect(() => {
     const handleResize = () => {
@@ -17,19 +16,12 @@ const CarController = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-  const WALK_SPEED = 20;
-  const RUN_SPEED = 30;
-  const ROTATION_SPEED = isSmallScreen ? 0.02 : 0.1;
-  //   const { WALK_SPEED, RUN_SPEED, ROTATION_SPEED } = useControls("Car Control", {
-  //     WALK_SPEED: { value: 0.8, min: 0.1, max: 10, step: 0.1 },
-  //     RUN_SPEED: { value: 1.6, min: 0.2, max: 30, step: 0.1 },
-  //     ROTATION_SPEED: {
-  //       value: degToRad(0.5),
-  //       min: degToRad(0.1),
-  //       max: degToRad(5),
-  //       step: degToRad(0.1),
-  //     },
-  //   });
+
+  const WALK_SPEED = 50;
+  const RUN_SPEED = 70;
+  const ROTATION_SPEED = isSmallScreen ? 0.02 : 0.02;
+  const ACCELERATION = 0.5; // Acceleration rate
+  const DECELERATION = 0.5; // Deceleration rate
 
   const rb = useRef();
   const container = useRef();
@@ -41,56 +33,8 @@ const CarController = () => {
   const cameraLookAtWorldPosition = useRef(new Vector3());
   const cameraLookAt = useRef(new Vector3());
   const [, get] = useKeyboardControls();
-  const isClicking = useRef(false);
-  const touchStart = useRef({ x: 0, y: 0 });
-  const touchEnd = useRef({ x: 0, y: 0 });
-  const isTouching = useRef(false);
 
-  useEffect(() => {
-    const onMouseDown = (e) => {
-      isClicking.current = true;
-    };
-    const onMouseUp = (e) => {
-      isClicking.current = false;
-    };
-
-    const onTouchStart = (e) => {
-      isTouching.current = true;
-      touchStart.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-      };
-    };
-
-    const onTouchMove = (e) => {
-      if (isTouching.current) {
-        touchEnd.current = {
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
-        };
-      }
-    };
-
-    const onTouchEnd = (e) => {
-      isTouching.current = false;
-      touchStart.current = { x: 0, y: 0 };
-      touchEnd.current = { x: 0, y: 0 };
-    };
-
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("mouseup", onMouseUp);
-    document.addEventListener("touchstart", onTouchStart);
-    document.addEventListener("touchmove", onTouchMove);
-    document.addEventListener("touchend", onTouchEnd);
-
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("mouseup", onMouseUp);
-      document.removeEventListener("touchstart", onTouchStart);
-      document.removeEventListener("touchmove", onTouchMove);
-      document.removeEventListener("touchend", onTouchEnd);
-    };
-  }, []);
+  const currentSpeed = useRef(0); // Current speed of the car
 
   useFrame(({ camera, mouse }) => {
     if (rb.current) {
@@ -100,35 +44,38 @@ const CarController = () => {
         z: 0,
       };
 
+      let targetSpeed = 0;
+
+      // Keyboard controls
       if (get().forward) {
-        movement.z = -1;
-      }
-      if (get().backward) {
-        movement.z = 1;
-      }
-
-      let speed = get().run ? RUN_SPEED : WALK_SPEED;
-
-      if (isClicking.current) {
-        movement.x = -mouse.x;
-        movement.z = -mouse.y;
+        targetSpeed = get().run ? RUN_SPEED : WALK_SPEED;
+      } else if (get().backward) {
+        targetSpeed = get().run ? -RUN_SPEED : -WALK_SPEED;
       }
 
-      if (isTouching.current) {
-        const deltaX = touchEnd.current.x - touchStart.current.x;
-        const deltaY = touchEnd.current.y - touchStart.current.y;
-
-        // Swipe up/down for forward/backward movement
-        if (Math.abs(deltaY) > Math.abs(deltaX)) {
-          movement.z = deltaY > 0 ? 1 : -1; // Swipe up for forward, swipe down for backward
+      // Joystick controls
+      if (joystickInput) {
+        if (joystickInput.y < 0) {
+          targetSpeed = WALK_SPEED;
+        } else if (joystickInput.y > 0) {
+          targetSpeed = -WALK_SPEED;
         }
-
-        // Swipe left/right for rotation
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-          rotationTarget.current += ROTATION_SPEED * (deltaX > 0 ? -1 : 1); // Swipe right for right turn, swipe left for left turn
-        }
+        rotationTarget.current += ROTATION_SPEED * joystickInput.x;
       }
 
+      // Gradually adjust the current speed towards the target speed
+      if (currentSpeed.current < targetSpeed) {
+        currentSpeed.current += ACCELERATION;
+      } else if (currentSpeed.current > targetSpeed) {
+        currentSpeed.current -= DECELERATION;
+      }
+
+      // Apply the current speed to the movement
+      if (currentSpeed.current !== 0) {
+        movement.z = currentSpeed.current > 0 ? -1 : 1;
+      }
+
+      // Keyboard rotation
       if (get().left) {
         movement.x = 1;
       }
@@ -141,8 +88,14 @@ const CarController = () => {
       }
 
       if (movement.x !== 0 || movement.z !== 0) {
-        vel.x = Math.sin(rotationTarget.current) * speed * movement.z;
-        vel.z = Math.cos(rotationTarget.current) * speed * movement.z;
+        vel.x =
+          Math.sin(rotationTarget.current) *
+          Math.abs(currentSpeed.current) *
+          movement.z;
+        vel.z =
+          Math.cos(rotationTarget.current) *
+          Math.abs(currentSpeed.current) *
+          movement.z;
       }
 
       rb.current.setLinvel(vel, true);
@@ -164,15 +117,14 @@ const CarController = () => {
   });
 
   return (
-    <RigidBody colliders={false} lockRotations ref={rb}>
+    <RigidBody colliders={"hull"} lockRotations ref={rb} gravityScale={10}>
       <group ref={container}>
         <group ref={cameraTarget} position-z={-5.5} rotation-y={Math.PI} />
         <group ref={cameraPosition} position-y={10} position-z={18} />
         <group ref={character} rotation-y={Math.PI}>
-          <Car scale={2.18} position-y={-0.25} />
+          <Car scale={isSmallScreen ? 2.18 : 3.18} position-y={-0.25} />
         </group>
       </group>
-      <CapsuleCollider args={[0.08, 0.15]} />
     </RigidBody>
   );
 };

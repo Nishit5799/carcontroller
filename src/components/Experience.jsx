@@ -1,16 +1,15 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
   Environment,
   KeyboardControls,
-  //   OrbitControls,
   OrthographicCamera,
 } from "@react-three/drei";
-
 import { Physics } from "@react-three/rapier";
 import Racetrack from "./Racetrack";
 import CarController from "./CarController";
+import Joystick from "./Joystick";
 
 const keyboardMap = [
   {
@@ -37,10 +36,11 @@ const keyboardMap = [
 
 const Experience = () => {
   const shadowCameraRef = useRef();
+  const [joystickInput, setJoystickInput] = useState({ x: 0, y: 0 });
+
   return (
     <KeyboardControls map={keyboardMap}>
       <Canvas camera={{ position: [0, 5, 10], fov: 60 }} shadows>
-        {/* <OrbitControls /> */}
         <Environment preset="sunset" />
         <directionalLight
           intensity={0.65}
@@ -61,9 +61,10 @@ const Experience = () => {
         </directionalLight>
         <Physics>
           <Racetrack />
-          <CarController />
+          <CarController joystickInput={joystickInput} />
         </Physics>
       </Canvas>
+      <Joystick onMove={setJoystickInput} />
     </KeyboardControls>
   );
 };
