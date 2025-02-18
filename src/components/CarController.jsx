@@ -116,8 +116,24 @@ const CarController = ({ joystickInput }) => {
     }
   });
 
+  const respawn = () => {
+    rb.current.setTranslation({ x: 0, y: 5, z: 0 });
+    rotationTarget.current = 0; // Reset the rotation target
+    container.current.rotation.y = 0; // Reset the container's rotation
+  };
+
   return (
-    <RigidBody colliders={"hull"} lockRotations ref={rb} gravityScale={10}>
+    <RigidBody
+      colliders={"hull"}
+      lockRotations
+      ref={rb}
+      gravityScale={10}
+      onIntersectionEnter={({ other }) => {
+        if (other.rigidBodyObject.name === "space") {
+          respawn();
+        }
+      }}
+    >
       <group ref={container}>
         <group ref={cameraTarget} position-z={-5.5} rotation-y={Math.PI} />
         <group ref={cameraPosition} position-y={10} position-z={18} />

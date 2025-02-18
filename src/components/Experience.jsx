@@ -4,9 +4,10 @@ import { Canvas } from "@react-three/fiber";
 import {
   Environment,
   KeyboardControls,
+  OrbitControls,
   OrthographicCamera,
 } from "@react-three/drei";
-import { Physics } from "@react-three/rapier";
+import { CuboidCollider, Physics, RigidBody } from "@react-three/rapier";
 import Racetrack from "./Racetrack";
 import CarController from "./CarController";
 import Joystick from "./Joystick";
@@ -41,6 +42,7 @@ const Experience = () => {
   return (
     <KeyboardControls map={keyboardMap}>
       <Canvas camera={{ position: [0, 5, 10], fov: 60 }} shadows>
+        <OrbitControls />
         <Environment preset="sunset" />
         <directionalLight
           intensity={0.65}
@@ -59,8 +61,17 @@ const Experience = () => {
             attach={"shadow-camera"}
           />
         </directionalLight>
-        <Physics>
+        <Physics >
           <Racetrack />
+          <RigidBody
+            type="fixed"
+            colliders={false}
+            sensor
+            name="space"
+            position-y={-21}
+          >
+            <CuboidCollider args={[500, 0.5, 500]} />
+          </RigidBody>
           <CarController joystickInput={joystickInput} />
         </Physics>
       </Canvas>
