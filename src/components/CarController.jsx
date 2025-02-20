@@ -24,7 +24,7 @@ const CarController = forwardRef(
       return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    const WALK_SPEED = isSmallScreen ? 70 : 100;
+    const WALK_SPEED = isSmallScreen ? 50 : 100;
     const RUN_SPEED = 130;
     const ROTATION_SPEED = isSmallScreen ? 0.03 : 0.02;
     const ACCELERATION = 0.5; // Acceleration rate
