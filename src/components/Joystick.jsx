@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 
-const Joystick = ({ onMove }) => {
+const Joystick = ({ onMove, onStart }) => {
   const joystickRef = useRef(null);
   const thumbstickRef = useRef(null);
   const touchIdRef = useRef(null);
@@ -48,6 +48,11 @@ const Joystick = ({ onMove }) => {
           x: isBackward ? Math.cos(angle) * force : -Math.cos(angle) * force, // Invert x direction when moving backward
           y: Math.sin(angle) * force,
         });
+
+        // Call onStart if moving forward
+        if (deltaY < 0) {
+          onStart();
+        }
       }
     }
   };
