@@ -45,6 +45,7 @@ const Experience = () => {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
+  const [showInfoPopup, setShowInfoPopup] = useState(false); // New state for info popup
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -61,12 +62,12 @@ const Experience = () => {
 
   const handleRaceEnd = () => {
     setIsTimerRunning(false);
-    let message = `Current Time: ${currentTime.toFixed(2)}s\n`;
+    let message = `Current Time: ${currentTime.toFixed(0)}s\n`;
     if (currentTime < bestTime || bestTime === 0) {
       setBestTime(currentTime);
       message += "New Best Time!";
     } else {
-      const difference = (currentTime - bestTime).toFixed(2);
+      const difference = (currentTime - bestTime).toFixed(0);
       message += `You were ${difference}s slower than your best time.`;
     }
     setPopupMessage(message);
@@ -88,6 +89,10 @@ const Experience = () => {
     if (carControllerRef.current) {
       carControllerRef.current.respawn();
     }
+  };
+
+  const handleInfoClick = () => {
+    setShowInfoPopup(true);
   };
 
   const carControllerRef = useRef();
@@ -134,6 +139,14 @@ const Experience = () => {
           >
             <CuboidCollider args={[15, 5, 0.1]} />
           </RigidBody>
+          <RigidBody
+            type="fixed"
+            colliders={false}
+            name="block"
+            position={[-0.5, -2, 7]}
+          >
+            <CuboidCollider args={[15, 5, 0.1]} />
+          </RigidBody>
           <CarController
             ref={carControllerRef}
             joystickInput={joystickInput}
@@ -149,6 +162,9 @@ const Experience = () => {
         onReset={handleReset}
         showPopup={showPopup}
         popupMessage={popupMessage}
+        showInfoPopup={showInfoPopup}
+        setShowInfoPopup={setShowInfoPopup}
+        onInfoClick={handleInfoClick}
       />
     </KeyboardControls>
   );

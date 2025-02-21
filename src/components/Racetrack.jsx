@@ -12,6 +12,7 @@ export default function Racetrack(props) {
           position={[165, -40, 170]}
           scale={1.719}
         >
+         
           <mesh
             geometry={nodes.Object_4.geometry}
             material={materials.material_10}

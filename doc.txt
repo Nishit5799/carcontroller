@@ -107,3 +107,5 @@ export default function Racetrack(props) {
 }
 
 useGLTF.preload("/racetrack.glb");
+
+<CapsuleCollider args={[0.5, 3.5]} position={[0, 3, 0]} />

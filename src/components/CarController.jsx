@@ -59,9 +59,9 @@ const CarController = forwardRef(
           onStart();
         }
         // Disable backward movement
-        // else if (get().backward) {
-        //   targetSpeed = get().run ? -RUN_SPEED : -WALK_SPEED;
-        // }
+        else if (get().backward) {
+          targetSpeed = get().run ? -RUN_SPEED : -WALK_SPEED;
+        }
 
         // Joystick controls (only forward movement allowed)
         if (joystickInput) {
@@ -70,9 +70,9 @@ const CarController = forwardRef(
             onStart();
           }
           // Disable backward movement
-          // else if (joystickInput.y > 0) {
-          //   targetSpeed = -WALK_SPEED;
-          // }
+          else if (joystickInput.y > 0) {
+            targetSpeed = -WALK_SPEED;
+          }
           rotationTarget.current += ROTATION_SPEED * joystickInput.x;
         }
 
@@ -161,8 +161,8 @@ const CarController = forwardRef(
           <group ref={cameraTarget} position-z={-5.5} rotation-y={Math.PI} />
           <group ref={cameraPosition} position-y={10} position-z={18} />
           <group ref={character} rotation-y={Math.PI}>
-            <Car scale={isSmallScreen ? 2.18 : 3.18} position-y={-0.25} />
-            <CapsuleCollider args={[0.01, 1]} />
+            <Car scale={isSmallScreen ? 2.7 : 3.18} position-y={-0.25} />
+            <CapsuleCollider args={[0.5, 3.5]} position={[0, 3, 0]} />
           </group>
         </group>
       </RigidBody>

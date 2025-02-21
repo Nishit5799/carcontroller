@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 
 const Joystick = ({ onMove, onStart }) => {
   const joystickRef = useRef(null);
@@ -8,6 +8,7 @@ const Joystick = ({ onMove, onStart }) => {
   const [thumbstickPosition, setThumbstickPosition] = useState({ x: 0, y: 0 });
 
   const handleTouchStart = (e) => {
+    e.preventDefault(); // Prevent default touch behavior
     if (touchIdRef.current === null) {
       const touch = e.touches[0];
       touchIdRef.current = touch.identifier;
@@ -20,6 +21,7 @@ const Joystick = ({ onMove, onStart }) => {
   };
 
   const handleTouchMove = (e) => {
+    e.preventDefault(); // Prevent default touch behavior
     if (touchIdRef.current !== null) {
       const touch = Array.from(e.touches).find(
         (t) => t.identifier === touchIdRef.current
@@ -64,20 +66,33 @@ const Joystick = ({ onMove, onStart }) => {
     onMove({ x: 0, y: 0 });
   };
 
+  // Add event listeners with { passive: false } to allow preventDefault
+  useEffect(() => {
+    const joystickElement = joystickRef.current;
+
+    const options = { passive: false }; // Mark event listeners as non-passive
+
+    joystickElement.addEventListener("touchstart", handleTouchStart, options);
+    joystickElement.addEventListener("touchmove", handleTouchMove, options);
+    joystickElement.addEventListener("touchend", handleTouchEnd, options);
+
+    return () => {
+      joystickElement.removeEventListener("touchstart", handleTouchStart);
+      joystickElement.removeEventListener("touchmove", handleTouchMove);
+      joystickElement.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, []);
+
   return (
     <div
       ref={joystickRef}
-      className="fixed bottom-5 right-5 w-32 h-32 rounded-full bg-white bg-opacity-50 touch-none flex items-center justify-center sm:block md:hidden" // Visible on sm, hidden on md and above
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      className="fixed bottom-5 right-5 w-32 h-32 rounded-full bg-white bg-opacity-50 touch-none flex items-center justify-center sm:block md:hidden select-none user-select-none"
     >
       <div
         ref={thumbstickRef}
-        className="w-12 h-12 rounded-full bg-black bg-opacity-50"
+        className="w-12 h-12 rounded-full bg-black bg-opacity-50 select-none user-select-none transform transition-transform duration-100 ease-out"
         style={{
           transform: `translate(${thumbstickPosition.x}px, ${thumbstickPosition.y}px)`,
-          transition: "transform 0.1s ease-out",
         }}
       ></div>
     </div>
