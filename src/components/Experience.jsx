@@ -21,7 +21,7 @@ const keyboardMap = [
   },
   {
     name: "backward",
-    keys: ["ArrowDown", "KeyS"],
+    keys: ["ArrowDown", "KeyS"], // Ensure "S" is mapped to backward
   },
   {
     name: "left",
@@ -45,7 +45,7 @@ const Experience = () => {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
-  const [showInfoPopup, setShowInfoPopup] = useState(false); // New state for info popup
+  const [showInfoPopup, setShowInfoPopup] = useState(false);
   const timerRef = useRef(null);
 
   useEffect(() => {

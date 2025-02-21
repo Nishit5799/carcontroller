@@ -15,6 +15,9 @@ import { MathUtils } from "three/src/math/MathUtils";
 const CarController = forwardRef(
   ({ joystickInput, onRaceEnd, onStart }, ref) => {
     const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
+    const [isBraking, setIsBraking] = useState(false); // State to track braking
+    const [isReversing, setIsReversing] = useState(false); // State to track reversing
+
     useEffect(() => {
       const handleResize = () => {
         setIsSmallScreen(window.innerWidth < 640);
@@ -53,25 +56,33 @@ const CarController = forwardRef(
 
         let targetSpeed = 0;
 
-        // Keyboard controls (only forward movement allowed)
-        if (get().forward) {
-          targetSpeed = get().run ? RUN_SPEED : WALK_SPEED;
+        // Keyboard controls
+        const { forward, backward, left, right, run } = get();
+        if (forward) {
+          targetSpeed = run ? RUN_SPEED : WALK_SPEED;
           onStart();
-        }
-        // Disable backward movement
-        else if (get().backward) {
-          targetSpeed = get().run ? -RUN_SPEED : -WALK_SPEED;
+          setIsBraking(false); // Not braking when moving forward
+          setIsReversing(false); // Not reversing when moving forward
+        } else if (backward) {
+          targetSpeed = run ? -RUN_SPEED : -WALK_SPEED;
+          setIsReversing(true); // Set reversing state to true
+          setIsBraking(true); // Set braking state to true when moving backward
+        } else {
+          setIsReversing(false); // Set reversing state to false
+          setIsBraking(false); // Set braking state to false
         }
 
-        // Joystick controls (only forward movement allowed)
+        // Joystick controls
         if (joystickInput) {
           if (joystickInput.y < 0) {
             targetSpeed = WALK_SPEED;
             onStart();
-          }
-          // Disable backward movement
-          else if (joystickInput.y > 0) {
+            setIsBraking(false); // Not braking when moving forward
+            setIsReversing(false); // Not reversing when moving forward
+          } else if (joystickInput.y > 0) {
             targetSpeed = -WALK_SPEED;
+            setIsReversing(true); // Set reversing state to true
+            setIsBraking(true); // Set braking state to true when moving backward
           }
           rotationTarget.current += ROTATION_SPEED * joystickInput.x;
         }
@@ -88,11 +99,14 @@ const CarController = forwardRef(
           movement.z = currentSpeed.current > 0 ? -1 : 1;
         }
 
+        // Set braking state only when moving backward
+        setIsBraking(currentSpeed.current < 0);
+
         // Keyboard rotation
-        if (get().left) {
+        if (left) {
           movement.x = 1;
         }
-        if (get().right) {
+        if (right) {
           movement.x = -1;
         }
 
@@ -161,7 +175,12 @@ const CarController = forwardRef(
           <group ref={cameraTarget} position-z={-5.5} rotation-y={Math.PI} />
           <group ref={cameraPosition} position-y={10} position-z={18} />
           <group ref={character} rotation-y={Math.PI}>
-            <Car scale={isSmallScreen ? 2.7 : 3.18} position-y={-0.25} />
+            <Car
+              scale={isSmallScreen ? 2.7 : 3.18}
+              position-y={-0.25}
+              isBraking={isBraking}
+              isReversing={isReversing} // Pass the isReversing state to the Car component
+            />
             <CapsuleCollider args={[0.5, 3.5]} position={[0, 3, 0]} />
           </group>
         </group>

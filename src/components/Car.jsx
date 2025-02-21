@@ -1,8 +1,27 @@
 import React from "react";
 import { useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 
-export default function Car(props) {
+export default function Car({ isBraking, isReversing, ...props }) {
   const { nodes, materials } = useGLTF("/car.glb");
+
+  // Change the reverse light material color based on the reversing state
+  const reverseLightMaterial = isReversing
+    ? new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: 0xffffff,
+        emissiveIntensity: 2,
+      })
+    : materials.RRRX7VS__Blinker_L;
+  // Change the brake light material color based on the braking state
+  const brakeLightMaterial = isBraking
+    ? new THREE.MeshStandardMaterial({
+        color: 0xff0000,
+        emissive: 0xff0000,
+        emissiveIntensity: 2,
+      })
+    : materials.RRRX7VS__BrakeLight2;
+
   return (
     <group {...props} dispose={null}>
       <group rotation={[-Math.PI / 2, 0, 0]}>
@@ -28,15 +47,15 @@ export default function Car(props) {
         />
         <mesh
           geometry={nodes.Object_7.geometry}
-          material={materials.RRRX7VS__Blinker_L}
+          material={reverseLightMaterial} // Use the conditional reverse light material
         />
         <mesh
           geometry={nodes.Object_8.geometry}
-          material={materials.RRRX7VS__Blinker_R}
+          material={reverseLightMaterial} // Use the conditional reverse light material
         />
         <mesh
           geometry={nodes.Object_9.geometry}
-          material={materials.RRRX7VS__BrakeLight2}
+          material={brakeLightMaterial} // Use the conditional brake light material
         />
         <mesh
           geometry={nodes.Object_10.geometry}
