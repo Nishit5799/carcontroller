@@ -5,14 +5,6 @@ import * as THREE from "three";
 export default function Car({ isBraking, isReversing, ...props }) {
   const { nodes, materials } = useGLTF("/car.glb");
 
-  // Change the reverse light material color based on the reversing state
-  const brakeLightMaterial = isReversing
-    ? new THREE.MeshStandardMaterial({
-        color: 0xff0000,
-        emissive: 0xff0000,
-        emissiveIntensity: 2,
-      })
-    : materials.RRRX7VS__Blinker_L;
   // Change the brake light material color based on the braking state
   const reverseLightMaterial = isBraking
     ? new THREE.MeshStandardMaterial({
@@ -21,6 +13,15 @@ export default function Car({ isBraking, isReversing, ...props }) {
         emissiveIntensity: 2,
       })
     : materials.RRRX7VS__BrakeLight2;
+
+  // Change the reverse light material color based on the reversing state
+  const brakeLightMaterial = isReversing
+    ? new THREE.MeshStandardMaterial({
+        color: 0xff0000,
+        emissive: 0xff0000,
+        emissiveIntensity: 2,
+      })
+    : materials.RRRX7VS__Blinker_L;
 
   return (
     <group {...props} dispose={null}>

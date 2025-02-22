@@ -47,6 +47,8 @@ const Experience = () => {
   const [popupMessage, setPopupMessage] = useState("");
   const [showInfoPopup, setShowInfoPopup] = useState(false);
   const timerRef = useRef(null);
+  const carControllerRef = useRef();
+  const blockRef = useRef(); // Reference to the "block" rigid body
 
   useEffect(() => {
     if (isTimerRunning) {
@@ -89,13 +91,15 @@ const Experience = () => {
     if (carControllerRef.current) {
       carControllerRef.current.respawn();
     }
+    // Activate the "block" rigid body
+    if (blockRef.current) {
+      blockRef.current.setEnabled(true);
+    }
   };
 
   const handleInfoClick = () => {
     setShowInfoPopup(true);
   };
-
-  const carControllerRef = useRef();
 
   return (
     <KeyboardControls map={keyboardMap}>
@@ -144,6 +148,7 @@ const Experience = () => {
             colliders={false}
             name="block"
             position={[-0.5, -2, 7]}
+            ref={blockRef} // Assign the reference to the "block" rigid body
           >
             <CuboidCollider args={[15, 5, 0.1]} />
           </RigidBody>

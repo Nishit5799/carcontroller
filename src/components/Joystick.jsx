@@ -51,9 +51,9 @@ const Joystick = ({ onMove, onStart }) => {
           y: Math.sin(angle) * force,
         });
 
-        // Call onStart immediately when moving forward or backward
-        if (deltaY !== 0) {
-          onStart();
+        // Call onStart if moving forward
+        if (deltaY < 0) {
+          onStart(); // Call onStart immediately when moving forward
         }
       }
     }
