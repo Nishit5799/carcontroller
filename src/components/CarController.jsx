@@ -18,6 +18,35 @@ const CarController = forwardRef(
     const [isBraking, setIsBraking] = useState(false); // State to track braking
     const [isReversing, setIsReversing] = useState(false); // State to track reversing
 
+    const accelerateSound = useRef(null);
+    const reverseSound = useRef(null);
+    const brakeSound = useRef(null);
+
+    // Initialize the audio objects in useEffect
+    useEffect(() => {
+      accelerateSound.current = new Audio("/accelerate.wav"); // Path to your accelerate sound
+      reverseSound.current = new Audio("/reverse.wav"); // Path to your reverse sound
+      brakeSound.current = new Audio("/brake.wav"); // Path to your brake sound
+
+      // Optionally, set loop for sounds that need to loop
+      accelerateSound.current.loop = true; // Loop the accelerate sound
+      reverseSound.current.loop = true; // Loop the reverse sound
+
+      // Debugging: Log when sounds are loaded
+      accelerateSound.current.onloadeddata = () =>
+        console.log("Accelerate sound loaded");
+      reverseSound.current.onloadeddata = () =>
+        console.log("Reverse sound loaded");
+      brakeSound.current.onloadeddata = () => console.log("Brake sound loaded");
+
+      // Cleanup sounds on unmount
+      return () => {
+        accelerateSound.current.pause();
+        reverseSound.current.pause();
+        brakeSound.current.pause();
+      };
+    }, []);
+
     useEffect(() => {
       const handleResize = () => {
         setIsSmallScreen(window.innerWidth < 640);
@@ -46,6 +75,16 @@ const CarController = forwardRef(
 
     const currentSpeed = useRef(0); // Current speed of the car
 
+    // Function to play a sound from the beginning
+    const playSoundFromStart = (sound) => {
+      if (sound) {
+        sound.currentTime = 0; // Reset sound to the beginning
+        sound
+          .play()
+          .catch((error) => console.error("Failed to play sound:", error));
+      }
+    };
+
     useFrame(({ camera, mouse }) => {
       if (rb.current) {
         const vel = rb.current.linvel();
@@ -63,26 +102,84 @@ const CarController = forwardRef(
           onStart();
           setIsBraking(false); // Not braking when moving forward
           setIsReversing(false); // Not reversing when moving forward
+
+          // Play accelerate sound from the beginning
+          if (accelerateSound.current.paused) {
+            playSoundFromStart(accelerateSound.current);
+          }
+          // Stop reverse sound if playing
+          if (!reverseSound.current.paused) {
+            reverseSound.current.pause();
+          }
         } else if (backward) {
           targetSpeed = run ? -RUN_SPEED : -WALK_SPEED;
           setIsReversing(true); // Set reversing state to true
           setIsBraking(true); // Set braking state to true when moving backward
+
+          // Play reverse sound from the beginning
+          if (reverseSound.current.paused) {
+            playSoundFromStart(reverseSound.current);
+          }
+          // Stop accelerate sound if playing
+          if (!accelerateSound.current.paused) {
+            accelerateSound.current.pause();
+          }
         } else {
           setIsReversing(false); // Set reversing state to false
           setIsBraking(false); // Set braking state to false
+
+          // If the car is still moving forward, keep playing the accelerate sound
+          if (currentSpeed.current > 0) {
+            if (accelerateSound.current.paused) {
+              playSoundFromStart(accelerateSound.current);
+            }
+          }
+          // If the car is still moving backward, keep playing the reverse sound
+          else if (currentSpeed.current < 0) {
+            if (reverseSound.current.paused) {
+              playSoundFromStart(reverseSound.current);
+            }
+          }
+          // If the car has come to rest, stop both sounds
+          else {
+            if (!accelerateSound.current.paused) {
+              accelerateSound.current.pause();
+            }
+            if (!reverseSound.current.paused) {
+              reverseSound.current.pause();
+            }
+          }
         }
 
         // Joystick controls
         if (joystickInput) {
           if (joystickInput.y < 0) {
             targetSpeed = WALK_SPEED;
-            onStart();
+            onStart(); // Call onStart immediately when moving forward
             setIsBraking(false); // Not braking when moving forward
             setIsReversing(false); // Not reversing when moving forward
+
+            // Play accelerate sound from the beginning
+            if (accelerateSound.current.paused) {
+              playSoundFromStart(accelerateSound.current);
+            }
+            // Stop reverse sound if playing
+            if (!reverseSound.current.paused) {
+              reverseSound.current.pause();
+            }
           } else if (joystickInput.y > 0) {
             targetSpeed = -WALK_SPEED;
             setIsReversing(true); // Set reversing state to true
             setIsBraking(true); // Set braking state to true when moving backward
+
+            // Play reverse sound from the beginning
+            if (reverseSound.current.paused) {
+              playSoundFromStart(reverseSound.current);
+            }
+            // Stop accelerate sound if playing
+            if (!accelerateSound.current.paused) {
+              accelerateSound.current.pause();
+            }
           }
           rotationTarget.current += ROTATION_SPEED * joystickInput.x;
         }
@@ -146,10 +243,27 @@ const CarController = forwardRef(
     });
 
     const respawn = () => {
-      rb.current.setTranslation({ x: 0, y: 5, z: 0 });
-      rb.current.setLinvel({ x: 0, y: 0, z: 0 });
+      rb.current.setTranslation({ x: 0, y: -10, z: -30 });
+      rb.current.setLinvel({ x: 0, y: 0, z: 0 }); // Reset linear velocity to zero
+      rb.current.setAngvel({ x: 0, y: 0, z: 0 }); // Reset angular velocity to zero
       rotationTarget.current = 0; // Reset the rotation target
       container.current.rotation.y = 0; // Reset the container's rotation
+
+      // Stop all sounds
+      if (accelerateSound.current) {
+        accelerateSound.current.pause();
+      }
+      if (reverseSound.current) {
+        reverseSound.current.pause();
+      }
+      if (brakeSound.current) {
+        brakeSound.current.pause();
+      }
+
+      // Reset states
+      setIsBraking(false);
+      setIsReversing(false);
+      currentSpeed.current = 0; // Reset the current speed
     };
 
     // Expose the respawn function to the parent component

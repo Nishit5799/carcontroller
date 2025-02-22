@@ -47,12 +47,12 @@ const Joystick = ({ onMove, onStart }) => {
 
         // Pass the normalized movement to the parent component
         onMove({
-          x: isBackward ? Math.cos(angle) * force : -Math.cos(angle) * force, // Invert x direction when moving backward
+          x: isBackward ? -Math.cos(angle) * force : -Math.cos(angle) * force, // Invert x direction when moving backward
           y: Math.sin(angle) * force,
         });
 
-        // Call onStart if moving forward
-        if (deltaY < 0) {
+        // Call onStart immediately when moving forward or backward
+        if (deltaY !== 0) {
           onStart();
         }
       }
