@@ -13,10 +13,25 @@ import { useKeyboardControls } from "@react-three/drei";
 import { MathUtils } from "three/src/math/MathUtils";
 
 const CarController = forwardRef(
-  ({ joystickInput, onRaceEnd, onStart }, ref) => {
+  ({ joystickInput, onRaceEnd, onStart, disabled }, ref) => {
     const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
-    const [isBraking, setIsBraking] = useState(false); // State to track braking
-    const [isReversing, setIsReversing] = useState(false); // State to track reversing
+    const [isBraking, setIsBraking] = useState(false);
+    const [isReversing, setIsReversing] = useState(false);
+
+    // Audio refs
+    const accelerateSound = useRef(null);
+    const reverseSound = useRef(null);
+    const brakeSound = useRef(null);
+
+    useEffect(() => {
+      accelerateSound.current = new Audio("/accelerate.mp3");
+      reverseSound.current = new Audio("/reverse.mp3");
+      brakeSound.current = new Audio("/brake.mp3");
+
+      accelerateSound.current.load();
+      reverseSound.current.load();
+      brakeSound.current.load();
+    }, []);
 
     useEffect(() => {
       const handleResize = () => {
@@ -30,8 +45,8 @@ const CarController = forwardRef(
     const WALK_SPEED = isSmallScreen ? 50 : 100;
     const RUN_SPEED = 130;
     const ROTATION_SPEED = isSmallScreen ? 0.03 : 0.02;
-    const ACCELERATION = 0.5; // Acceleration rate
-    const DECELERATION = 0.5; // Deceleration rate
+    const ACCELERATION = 0.5;
+    const DECELERATION = 0.5;
 
     const rb = useRef();
     const container = useRef();
@@ -44,10 +59,25 @@ const CarController = forwardRef(
     const cameraLookAt = useRef(new Vector3());
     const [, get] = useKeyboardControls();
 
-    const currentSpeed = useRef(0); // Current speed of the car
+    const currentSpeed = useRef(0);
+
+    const playSound = (sound) => {
+      if (sound.paused) {
+        sound.currentTime = 0;
+        sound.play().catch((error) => {
+          console.error("Error playing sound:", error);
+        });
+      }
+    };
+
+    const pauseSound = (sound) => {
+      if (!sound.paused) {
+        sound.pause();
+      }
+    };
 
     useFrame(({ camera, mouse }) => {
-      if (rb.current) {
+      if (rb.current && !disabled) {
         const vel = rb.current.linvel();
         const movement = {
           x: 0,
@@ -56,53 +86,68 @@ const CarController = forwardRef(
 
         let targetSpeed = 0;
 
-        // Keyboard controls
         const { forward, backward, left, right, run } = get();
         if (forward) {
           targetSpeed = run ? RUN_SPEED : WALK_SPEED;
           onStart();
-          setIsBraking(false); // Not braking when moving forward
-          setIsReversing(false); // Not reversing when moving forward
+          setIsBraking(false);
+          setIsReversing(false);
+
+          playSound(accelerateSound.current);
+          pauseSound(reverseSound.current);
+          pauseSound(brakeSound.current);
         } else if (backward) {
           targetSpeed = run ? -RUN_SPEED : -WALK_SPEED;
-          setIsReversing(true); // Set reversing state to true
-          setIsBraking(true); // Set braking state to true when moving backward
+          setIsReversing(true);
+          setIsBraking(true);
+
+          playSound(reverseSound.current);
+          pauseSound(accelerateSound.current);
+          pauseSound(brakeSound.current);
         } else {
-          setIsReversing(false); // Set reversing state to false
-          setIsBraking(false); // Set braking state to false
+          setIsReversing(false);
+          setIsBraking(false);
+
+          pauseSound(accelerateSound.current);
+          pauseSound(reverseSound.current);
+          pauseSound(brakeSound.current);
         }
 
-        // Joystick controls
+        // Handle joystick input
         if (joystickInput) {
           if (joystickInput.y < 0) {
             targetSpeed = WALK_SPEED;
             onStart();
-            setIsBraking(false); // Not braking when moving forward
-            setIsReversing(false); // Not reversing when moving forward
+            setIsBraking(false);
+            setIsReversing(false);
+
+            playSound(accelerateSound.current);
+            pauseSound(reverseSound.current);
+            pauseSound(brakeSound.current);
           } else if (joystickInput.y > 0) {
             targetSpeed = -WALK_SPEED;
-            setIsReversing(true); // Set reversing state to true
-            setIsBraking(true); // Set braking state to true when moving backward
+            setIsReversing(true);
+            setIsBraking(true);
+
+            playSound(reverseSound.current);
+            pauseSound(accelerateSound.current);
+            pauseSound(brakeSound.current);
           }
           rotationTarget.current += ROTATION_SPEED * joystickInput.x;
         }
 
-        // Gradually adjust the current speed towards the target speed
         if (currentSpeed.current < targetSpeed) {
           currentSpeed.current += ACCELERATION;
         } else if (currentSpeed.current > targetSpeed) {
           currentSpeed.current -= DECELERATION;
         }
 
-        // Apply the current speed to the movement
         if (currentSpeed.current !== 0) {
           movement.z = currentSpeed.current > 0 ? -1 : 1;
         }
 
-        // Set braking state only when moving backward
         setIsBraking(currentSpeed.current < 0);
 
-        // Keyboard rotation
         if (left) {
           movement.x = 1;
         }
@@ -128,7 +173,6 @@ const CarController = forwardRef(
         rb.current.setLinvel(vel, true);
       }
 
-      // CAMERA
       container.current.rotation.y = MathUtils.lerp(
         container.current.rotation.y,
         rotationTarget.current,
@@ -147,13 +191,12 @@ const CarController = forwardRef(
 
     const respawn = () => {
       rb.current.setTranslation({ x: 0, y: -10, z: -10 });
-      rb.current.setLinvel({ x: 0, y: 0, z: 0 }); // Reset linear velocity
-      rb.current.setAngvel({ x: 0, y: 0, z: 0 }); // Reset angular velocity
-      rotationTarget.current = 0; // Reset the rotation target
-      container.current.rotation.y = 0; // Reset the container's rotation
+      rb.current.setLinvel({ x: 0, y: 0, z: 0 });
+      rb.current.setAngvel({ x: 0, y: 0, z: 0 });
+      rotationTarget.current = 0;
+      container.current.rotation.y = 0;
     };
 
-    // Expose the respawn function to the parent component
     useImperativeHandle(ref, () => ({
       respawn,
     }));
@@ -180,7 +223,7 @@ const CarController = forwardRef(
               scale={isSmallScreen ? 2.7 : 3.18}
               position-y={-0.25}
               isBraking={isBraking}
-              isReversing={isReversing} // Pass the isReversing state to the Car component
+              isReversing={isReversing}
             />
             <CapsuleCollider args={[0.5, 3.5]} position={[0, 3, 0]} />
           </group>

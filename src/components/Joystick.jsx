@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 
-const Joystick = ({ onMove, onStart }) => {
+const Joystick = ({ onMove, onStart, disabled }) => {
   const joystickRef = useRef(null);
   const thumbstickRef = useRef(null);
   const touchIdRef = useRef(null);
@@ -8,7 +8,7 @@ const Joystick = ({ onMove, onStart }) => {
   const [thumbstickPosition, setThumbstickPosition] = useState({ x: 0, y: 0 });
 
   const handleTouchStart = (e) => {
-    e.preventDefault(); // Prevent default touch behavior
+    e.preventDefault();
     if (touchIdRef.current === null) {
       const touch = e.touches[0];
       touchIdRef.current = touch.identifier;
@@ -21,7 +21,7 @@ const Joystick = ({ onMove, onStart }) => {
   };
 
   const handleTouchMove = (e) => {
-    e.preventDefault(); // Prevent default touch behavior
+    e.preventDefault();
     if (touchIdRef.current !== null) {
       const touch = Array.from(e.touches).find(
         (t) => t.identifier === touchIdRef.current
@@ -35,25 +35,19 @@ const Joystick = ({ onMove, onStart }) => {
         const angle = Math.atan2(deltaY, deltaX);
         const force = Math.min(distance / maxDistance, 1);
 
-        // Calculate the position of the thumbstick
         const thumbstickX = Math.cos(angle) * force * maxDistance;
         const thumbstickY = Math.sin(angle) * force * maxDistance;
 
-        // Update the thumbstick position with easing
         setThumbstickPosition({ x: thumbstickX, y: thumbstickY });
 
-        // Determine the direction of movement
-        const isBackward = deltaY > 0; // If deltaY is positive, the car is moving backward
-
-        // Pass the normalized movement to the parent component
+        const isBackward = deltaY > 0;
         onMove({
-          x: isBackward ? -Math.cos(angle) * force : -Math.cos(angle) * force, // Invert x direction when moving backward
+          x: isBackward ? -Math.cos(angle) * force : -Math.cos(angle) * force,
           y: Math.sin(angle) * force,
         });
 
-        // Call onStart if moving forward
         if (deltaY < 0) {
-          onStart(); // Call onStart immediately when moving forward
+          onStart();
         }
       }
     }
@@ -61,16 +55,13 @@ const Joystick = ({ onMove, onStart }) => {
 
   const handleTouchEnd = () => {
     touchIdRef.current = null;
-    // Reset the thumbstick position with easing
     setThumbstickPosition({ x: 0, y: 0 });
     onMove({ x: 0, y: 0 });
   };
 
-  // Add event listeners with { passive: false } to allow preventDefault
   useEffect(() => {
     const joystickElement = joystickRef.current;
-
-    const options = { passive: false }; // Mark event listeners as non-passive
+    const options = { passive: false };
 
     joystickElement.addEventListener("touchstart", handleTouchStart, options);
     joystickElement.addEventListener("touchmove", handleTouchMove, options);

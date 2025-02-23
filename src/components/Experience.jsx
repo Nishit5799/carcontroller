@@ -7,12 +7,12 @@ import {
   OrthographicCamera,
 } from "@react-three/drei";
 import { CuboidCollider, Physics, RigidBody } from "@react-three/rapier";
-
 import Racetrack from "./Racetrack";
 import CarController from "./CarController";
 import Joystick from "./Joystick";
 import Background from "./Background";
 import Timer from "./Timer";
+import gsap from "gsap";
 
 const keyboardMap = [
   {
@@ -21,7 +21,7 @@ const keyboardMap = [
   },
   {
     name: "backward",
-    keys: ["ArrowDown", "KeyS"], // Ensure "S" is mapped to backward
+    keys: ["ArrowDown", "KeyS"],
   },
   {
     name: "left",
@@ -46,9 +46,32 @@ const Experience = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
   const [showInfoPopup, setShowInfoPopup] = useState(false);
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
+  const [isGameStarted, setIsGameStarted] = useState(false);
   const timerRef = useRef(null);
   const carControllerRef = useRef();
-  const blockRef = useRef(); // Reference to the "block" rigid body
+  const blockRef = useRef();
+  const hasStarted = useRef(false);
+  const welcomeTextRef = useRef();
+
+  useEffect(() => {
+    if (showWelcomeScreen) {
+      const letters = Array.from(welcomeTextRef.current.children);
+      gsap.fromTo(
+        letters,
+        { y: -10 },
+        {
+          y: 0,
+          duration: 0.5,
+          stagger: 0.1,
+          ease: "ease.in",
+          repeat: -1,
+          repeatDelay: 0.5,
+          yoyo: true,
+        }
+      );
+    }
+  }, [showWelcomeScreen]);
 
   useEffect(() => {
     if (isTimerRunning) {
@@ -74,12 +97,14 @@ const Experience = () => {
     }
     setPopupMessage(message);
     setShowPopup(true);
+    hasStarted.current = false;
   };
 
   const handleStart = () => {
-    if (!isTimerRunning) {
+    if (!hasStarted.current) {
       setCurrentTime(0);
       setIsTimerRunning(true);
+      hasStarted.current = true;
     }
   };
 
@@ -87,11 +112,10 @@ const Experience = () => {
     setCurrentTime(0);
     setIsTimerRunning(false);
     setShowPopup(false);
-    // Reset the car position and velocity
+    hasStarted.current = false;
     if (carControllerRef.current) {
       carControllerRef.current.respawn();
     }
-    // Activate the "block" rigid body
     if (blockRef.current) {
       blockRef.current.setEnabled(true);
     }
@@ -99,6 +123,11 @@ const Experience = () => {
 
   const handleInfoClick = () => {
     setShowInfoPopup(true);
+  };
+
+  const handlePlayGame = () => {
+    setShowWelcomeScreen(false);
+    setIsGameStarted(true);
   };
 
   return (
@@ -148,7 +177,7 @@ const Experience = () => {
             colliders={false}
             name="block"
             position={[-0.5, -2, 7]}
-            ref={blockRef} // Assign the reference to the "block" rigid body
+            ref={blockRef}
           >
             <CuboidCollider args={[15, 5, 0.1]} />
           </RigidBody>
@@ -157,10 +186,44 @@ const Experience = () => {
             joystickInput={joystickInput}
             onRaceEnd={handleRaceEnd}
             onStart={handleStart}
+            disabled={!isGameStarted}
           />
         </Physics>
       </Canvas>
-      <Joystick onMove={setJoystickInput} onStart={handleStart} />
+      {showWelcomeScreen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50 start">
+          <div className="text-center">
+            <div
+              ref={welcomeTextRef}
+              className="font-choco tracking-wider text-5xl font-bold text-yellow-400 mb-8 flex"
+            >
+              {"Welcome to Nishkart".split("").map((letter, index) => (
+                <span key={index} className="inline-block">
+                  {letter === " " ? "\u00A0" : letter}
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={handlePlayGame}
+              className="px-8 py-2 font-choco tracking-widest bg-orange-500 text-white sm:text-2xl text-3xl font-bold rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              PLAY GAME
+            </button>
+            <div
+              onClick={handleInfoClick}
+              className="mt-4 py-2 font-choco text-white sm:text-2xl text-3xl tracking-widest cursor-pointer bg-blue-500 hover:bg-blue-600 sm:w-[50%] w-[57%] h-[30%] mx-auto rounded-lg transition-colors"
+            >
+              HOW TO PLAY?
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Joystick
+        onMove={setJoystickInput}
+        onStart={handleStart}
+        disabled={!isGameStarted}
+      />
       <Timer
         bestTime={bestTime}
         currentTime={currentTime}

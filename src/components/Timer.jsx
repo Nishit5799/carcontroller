@@ -22,10 +22,10 @@ const Timer = ({
 
   return (
     <>
-      <div className="fixed sm:top-5 sm:left-5 top-[9%] left-[2%] ">
+      <div className="fixed sm:top-5 sm:left-5 top-[9%] left-[2%]">
         <button
           onClick={onReset}
-          className="bg-red-500 text-white px-4 py-2  rounded-lg"
+          className="bg-red-500 text-white px-4 py-2 rounded-lg"
         >
           Reset
         </button>
@@ -49,7 +49,7 @@ const Timer = ({
             <p>{popupMessage}</p>
             <button
               onClick={onReset}
-              className="mt-4  bg-blue-500 text-white px-4 py-2 rounded-lg"
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg"
             >
               Restart
             </button>
@@ -57,13 +57,13 @@ const Timer = ({
         </div>
       )}
       {showInfoPopup && (
-        <div className="fixed inset-0 flex items-center justify-center text-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex items-center justify-center text-center bg-black bg-opacity-50 z-[100]">
           <div className="bg-white p-6 rounded-lg text-black max-w-md">
-            <h2 className="text-xl font-bold  mb-4">Game Information</h2>
+            <h2 className="text-xl font-bold mb-4">Game Information</h2>
             <p className="whitespace-pre-line">{infoMessage}</p>
             <button
               onClick={() => setShowInfoPopup(false)}
-              className="mt-4 bg-blue-500 text-white px-4 py-2  rounded-lg"
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg"
             >
               Close
             </button>
