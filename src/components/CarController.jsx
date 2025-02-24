@@ -212,25 +212,6 @@ const CarController = forwardRef(
         // Set braking state only when moving backward
         setIsBraking(currentSpeed.current < 0);
 
-        // Play brake sound when decelerating from forward movement to stop
-        if (
-          currentSpeed.current > 0 &&
-          targetSpeed <= 0 &&
-          !isBrakingSoundPlaying.current
-        ) {
-          if (brakeSound.current && brakeSound.current.paused) {
-            brakeSound.current.volume = 0.1; // Lower the volume for brake sound
-            playSoundOnce(brakeSound.current);
-            isBrakingSoundPlaying.current = true;
-          }
-        }
-
-        // Stop brake sound when the car comes to a complete stop
-        if (currentSpeed.current === 0 && isBrakingSoundPlaying.current) {
-          fadeOutSound(brakeSound.current);
-          isBrakingSoundPlaying.current = false;
-        }
-
         // Keyboard rotation
         if (left) {
           movement.x = 1;
