@@ -13,64 +13,15 @@ import { useKeyboardControls } from "@react-three/drei";
 import { MathUtils } from "three/src/math/MathUtils";
 
 const CarController = forwardRef(
-  ({ joystickInput, onRaceEnd, onStart, disabled }, ref) => {
+  ({ joystickInput, onRaceEnd, onStart }, ref) => {
     const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
     const [isBraking, setIsBraking] = useState(false); // State to track braking
     const [isReversing, setIsReversing] = useState(false); // State to track reversing
+    const [isMovingForward, setIsMovingForward] = useState(false); // State to track forward movement
 
-    // Audio refs for keyboard and joystick movement
-    const accelerateSoundKeyboard = useRef(null);
-    const reverseSoundKeyboard = useRef(null);
-    const accelerateSoundJoystick = useRef(null);
-    const reverseSoundJoystick = useRef(null);
-    const brakeSound = useRef(null); // Brake sound instance
-
-    useEffect(() => {
-      // Initialize audio for keyboard, joystick, and brake
-      accelerateSoundKeyboard.current = new Audio("/accelerate.mp3");
-      reverseSoundKeyboard.current = new Audio("/reverse.mp3");
-      accelerateSoundJoystick.current = new Audio("/accelerate.mp3");
-      reverseSoundJoystick.current = new Audio("/reverse.mp3");
-      brakeSound.current = new Audio("/brake.mp3");
-
-      // Set lower volume for all audio instances
-      accelerateSoundKeyboard.current.volume = 0.1;
-      reverseSoundKeyboard.current.volume = 0.1;
-      accelerateSoundJoystick.current.volume = 0.1;
-      reverseSoundJoystick.current.volume = 0.1;
-      brakeSound.current.volume = 0.1;
-
-      // Preload audio files
-      accelerateSoundKeyboard.current.load();
-      reverseSoundKeyboard.current.load();
-      accelerateSoundJoystick.current.load();
-      reverseSoundJoystick.current.load();
-      brakeSound.current.load();
-
-      return () => {
-        // Clean up audio objects
-        if (accelerateSoundKeyboard.current) {
-          accelerateSoundKeyboard.current.pause();
-          accelerateSoundKeyboard.current = null;
-        }
-        if (reverseSoundKeyboard.current) {
-          reverseSoundKeyboard.current.pause();
-          reverseSoundKeyboard.current = null;
-        }
-        if (accelerateSoundJoystick.current) {
-          accelerateSoundJoystick.current.pause();
-          accelerateSoundJoystick.current = null;
-        }
-        if (reverseSoundJoystick.current) {
-          reverseSoundJoystick.current.pause();
-          reverseSoundJoystick.current = null;
-        }
-        if (brakeSound.current) {
-          brakeSound.current.pause();
-          brakeSound.current = null;
-        }
-      };
-    }, []);
+    const audioContextRef = useRef(null); // Ref for the Web Audio API context
+    const audioBufferRef = useRef(null); // Ref for the audio buffer
+    const audioSourceRef = useRef(null); // Ref for the audio source
 
     useEffect(() => {
       const handleResize = () => {
@@ -81,11 +32,64 @@ const CarController = forwardRef(
       return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    // Initialize the Web Audio API
+    useEffect(() => {
+      // Create the AudioContext
+      audioContextRef.current = new (window.AudioContext ||
+        window.webkitAudioContext)();
+
+      // Load the sound file
+      const loadSound = async () => {
+        try {
+          const response = await fetch("/accelerate.mp3"); // Replace with your sound file path
+          const arrayBuffer = await response.arrayBuffer();
+          audioBufferRef.current =
+            await audioContextRef.current.decodeAudioData(arrayBuffer);
+        } catch (error) {
+          console.error("Error loading sound file:", error);
+        }
+      };
+
+      loadSound();
+
+      // Cleanup the AudioContext when the component unmounts
+      return () => {
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+        }
+      };
+    }, []);
+
+    // Play or stop the sound based on the car's movement
+    useEffect(() => {
+      if (isMovingForward) {
+        if (audioBufferRef.current && audioContextRef.current) {
+          // Stop any existing sound
+          if (audioSourceRef.current) {
+            audioSourceRef.current.stop();
+          }
+
+          // Create a new audio source and start playing
+          audioSourceRef.current = audioContextRef.current.createBufferSource();
+          audioSourceRef.current.buffer = audioBufferRef.current;
+          audioSourceRef.current.loop = true; // Loop the sound
+          audioSourceRef.current.connect(audioContextRef.current.destination);
+          audioSourceRef.current.start(0);
+        }
+      } else {
+        // Stop the sound if the car is not moving forward
+        if (audioSourceRef.current) {
+          audioSourceRef.current.stop();
+          audioSourceRef.current = null;
+        }
+      }
+    }, [isMovingForward]);
+
     const WALK_SPEED = isSmallScreen ? 50 : 100;
     const RUN_SPEED = 130;
     const ROTATION_SPEED = isSmallScreen ? 0.03 : 0.02;
     const ACCELERATION = 0.5; // Acceleration rate
-    const DECELERATION = 0.5; // Deceleration rate
+    const DECELERATION = 1; // Deceleration rate
 
     const rb = useRef();
     const container = useRef();
@@ -99,38 +103,9 @@ const CarController = forwardRef(
     const [, get] = useKeyboardControls();
 
     const currentSpeed = useRef(0); // Current speed of the car
-    const isBrakingSoundPlaying = useRef(false); // Track if brake sound is playing
-
-    // Function to play sound once
-    const playSoundOnce = (sound) => {
-      if (sound && sound.paused) {
-        sound.currentTime = 0; // Reset sound to the beginning
-        sound.volume = 0.1; // Lower the volume to 0.1
-        sound.play().catch((error) => {
-          console.error("Error playing sound:", error);
-        });
-      }
-    };
-
-    // Function to fade out sound
-    const fadeOutSound = (sound) => {
-      if (sound && !sound.paused) {
-        sound.volume = 0.1; // Start fading out from a lower volume
-        const fadeOutInterval = setInterval(() => {
-          if (sound.volume > 0.05) {
-            sound.volume -= 0.05; // Adjust the fade-out speed
-          } else {
-            sound.pause();
-            sound.currentTime = 0;
-            clearInterval(fadeOutInterval);
-          }
-        }, 50);
-      }
-    };
 
     useFrame(({ camera, mouse }) => {
-      if (rb.current && !disabled) {
-        // Only process inputs if not disabled
+      if (rb.current) {
         const vel = rb.current.linvel();
         const movement = {
           x: 0,
@@ -146,24 +121,19 @@ const CarController = forwardRef(
           onStart();
           setIsBraking(false); // Not braking when moving forward
           setIsReversing(false); // Not reversing when moving forward
-          // Play accelerate sound for keyboard forward movement
-          playSoundOnce(accelerateSoundKeyboard.current);
-          fadeOutSound(reverseSoundKeyboard.current);
-          fadeOutSound(brakeSound.current); // Stop brake sound when moving forward
-          isBrakingSoundPlaying.current = false;
+          setIsMovingForward(true); // Set moving forward state to true
         } else if (backward) {
-          targetSpeed = run ? -RUN_SPEED : -WALK_SPEED;
+          if (currentSpeed.current > 0) {
+            targetSpeed = 0; // Stop the car if it's moving forward
+          } else {
+            targetSpeed = 0; // Prevent backward movement
+          }
           setIsReversing(true); // Set reversing state to true
-          setIsBraking(true); // Set braking state to true when moving backward
-          playSoundOnce(reverseSoundKeyboard.current);
-          fadeOutSound(accelerateSoundKeyboard.current);
-          fadeOutSound(brakeSound.current); // Stop brake sound when moving backward
-          isBrakingSoundPlaying.current = false;
+          setIsMovingForward(false); // Set moving forward state to false
         } else {
           setIsReversing(false); // Set reversing state to false
           setIsBraking(false); // Set braking state to false
-          fadeOutSound(accelerateSoundKeyboard.current);
-          fadeOutSound(reverseSoundKeyboard.current);
+          setIsMovingForward(false); // Set moving forward state to false
         }
 
         // Joystick controls
@@ -173,26 +143,15 @@ const CarController = forwardRef(
             onStart();
             setIsBraking(false); // Not braking when moving forward
             setIsReversing(false); // Not reversing when moving forward
-
-            // Play accelerate sound for joystick forward movement
-            playSoundOnce(accelerateSoundJoystick.current);
-            fadeOutSound(reverseSoundJoystick.current);
-            fadeOutSound(brakeSound.current); // Stop brake sound when moving forward
-            isBrakingSoundPlaying.current = false;
+            setIsMovingForward(true); // Set moving forward state to true
           } else if (joystickInput.y > 0) {
-            targetSpeed = -WALK_SPEED;
+            if (currentSpeed.current > 0) {
+              targetSpeed = 0; // Stop the car if it's moving forward
+            } else {
+              targetSpeed = 0; // Prevent backward movement
+            }
             setIsReversing(true); // Set reversing state to true
-            setIsBraking(true); // Set braking state to true when moving backward
-
-            // Play reverse sound for joystick backward movement
-            playSoundOnce(reverseSoundJoystick.current);
-            fadeOutSound(accelerateSoundJoystick.current);
-            fadeOutSound(brakeSound.current); // Stop brake sound when moving backward
-            isBrakingSoundPlaying.current = false;
-          } else {
-            // Fade out sounds when joystick is released
-            fadeOutSound(accelerateSoundJoystick.current);
-            fadeOutSound(reverseSoundJoystick.current);
+            setIsMovingForward(false); // Set moving forward state to false
           }
           rotationTarget.current += ROTATION_SPEED * joystickInput.x;
         }
