@@ -25,12 +25,12 @@ const Timer = ({
       <div className="fixed sm:top-5 sm:left-5 top-[9%] left-[2%]">
         <button
           onClick={onReset}
-          className="bg-red-500 text-white px-4 py-2 rounded-lg"
+          className="bg-red-500 font-choco text-white px-4 py-2 rounded-lg"
         >
           Reset
         </button>
       </div>
-      <div className="fixed top-5 right-5 text-white bg-black rounded-lg flex justify-center flex-col items-center px-5 text-lg">
+      <div className="fixed top-5 right-5 text-white font-choco bg-black rounded-lg flex justify-center flex-col items-center px-5 text-lg">
         <div>Best Time: {bestTime.toFixed(0)}s</div>
         <div>Current Time: {currentTime.toFixed(0)}s</div>
       </div>
