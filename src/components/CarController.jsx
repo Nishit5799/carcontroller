@@ -22,6 +22,7 @@ const CarController = forwardRef(
     const audioContextRef = useRef(null); // Ref for the Web Audio API context
     const audioBufferRef = useRef(null); // Ref for the audio buffer
     const audioSourceRef = useRef(null); // Ref for the audio source
+    const fadeOutIntervalRef = useRef(null); // Ref for the fade-out interval
 
     useEffect(() => {
       const handleResize = () => {
@@ -60,27 +61,53 @@ const CarController = forwardRef(
       };
     }, []);
 
+    // Function to fade out the sound
+    const fadeOutSound = () => {
+      if (!audioSourceRef.current) return;
+
+      const fadeOutTime = 600; // Fade out time in milliseconds
+      const initialVolume = 1;
+      const step = initialVolume / (fadeOutTime / 10); // Reduce volume in steps
+
+      let currentVolume = initialVolume;
+
+      fadeOutIntervalRef.current = setInterval(() => {
+        if (audioSourceRef.current && currentVolume > 0) {
+          currentVolume -= step;
+          audioSourceRef.current.volume = currentVolume;
+        } else {
+          clearInterval(fadeOutIntervalRef.current);
+          if (audioSourceRef.current) {
+            audioSourceRef.current.stop();
+            audioSourceRef.current = null;
+          }
+        }
+      }, 10); // Adjust volume every 20ms
+    };
+
     // Play or stop the sound based on the car's movement
     useEffect(() => {
       if (isMovingForward) {
         if (audioBufferRef.current && audioContextRef.current) {
-          // Stop any existing sound
+          // Stop any existing sound and fade out
           if (audioSourceRef.current) {
-            audioSourceRef.current.stop();
+            clearInterval(fadeOutIntervalRef.current); // Stop the fade-out process
+            audioSourceRef.current.stop(); // Stop the current sound
+            audioSourceRef.current = null; // Reset the audio source
           }
 
           // Create a new audio source and start playing
           audioSourceRef.current = audioContextRef.current.createBufferSource();
           audioSourceRef.current.buffer = audioBufferRef.current;
           audioSourceRef.current.loop = true; // Loop the sound
+          audioSourceRef.current.volume = 1; // Reset volume to full
           audioSourceRef.current.connect(audioContextRef.current.destination);
           audioSourceRef.current.start(0);
         }
       } else {
-        // Stop the sound if the car is not moving forward
+        // Fade out the sound if the car is not moving forward
         if (audioSourceRef.current) {
-          audioSourceRef.current.stop();
-          audioSourceRef.current = null;
+          fadeOutSound();
         }
       }
     }, [isMovingForward]);
