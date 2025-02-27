@@ -23,6 +23,8 @@ const CarController = forwardRef(
     const audioBufferRef = useRef(null); // Ref for the audio buffer
     const audioSourceRef = useRef(null); // Ref for the audio source
     const fadeOutIntervalRef = useRef(null); // Ref for the fade-out interval
+    const raceEndAudioBufferRef = useRef(null); // Ref for the race end audio buffer
+    const lostAudioBufferRef = useRef(null); // Ref for the lost audio buffer
 
     useEffect(() => {
       const handleResize = () => {
@@ -39,7 +41,7 @@ const CarController = forwardRef(
       audioContextRef.current = new (window.AudioContext ||
         window.webkitAudioContext)();
 
-      // Load the sound file
+      // Load the acceleration sound file
       const loadSound = async () => {
         try {
           const response = await fetch("/accelerate.mp3"); // Replace with your sound file path
@@ -51,7 +53,33 @@ const CarController = forwardRef(
         }
       };
 
+      // Load the race end (victory) sound file
+      const loadRaceEndSound = async () => {
+        try {
+          const response = await fetch("/victory.mp3"); // Replace with your race end sound file path
+          const arrayBuffer = await response.arrayBuffer();
+          raceEndAudioBufferRef.current =
+            await audioContextRef.current.decodeAudioData(arrayBuffer);
+        } catch (error) {
+          console.error("Error loading race end sound file:", error);
+        }
+      };
+
+      // Load the lost sound file
+      const loadLostSound = async () => {
+        try {
+          const response = await fetch("/lost.mp3"); // Replace with your lost sound file path
+          const arrayBuffer = await response.arrayBuffer();
+          lostAudioBufferRef.current =
+            await audioContextRef.current.decodeAudioData(arrayBuffer);
+        } catch (error) {
+          console.error("Error loading lost sound file:", error);
+        }
+      };
+
       loadSound();
+      loadRaceEndSound();
+      loadLostSound();
 
       // Cleanup the AudioContext when the component unmounts
       return () => {
@@ -111,6 +139,26 @@ const CarController = forwardRef(
         }
       }
     }, [isMovingForward]);
+
+    // Function to play the victory sound
+    const playVictorySound = () => {
+      if (raceEndAudioBufferRef.current && audioContextRef.current) {
+        const victoryAudioSource = audioContextRef.current.createBufferSource();
+        victoryAudioSource.buffer = raceEndAudioBufferRef.current;
+        victoryAudioSource.connect(audioContextRef.current.destination);
+        victoryAudioSource.start(0);
+      }
+    };
+
+    // Function to play the lost sound
+    const playLostSound = () => {
+      if (lostAudioBufferRef.current && audioContextRef.current) {
+        const lostAudioSource = audioContextRef.current.createBufferSource();
+        lostAudioSource.buffer = lostAudioBufferRef.current;
+        lostAudioSource.connect(audioContextRef.current.destination);
+        lostAudioSource.start(0);
+      }
+    };
 
     const WALK_SPEED = isSmallScreen ? 50 : 100;
     const RUN_SPEED = 130;
@@ -249,9 +297,11 @@ const CarController = forwardRef(
       container.current.rotation.y = 0; // Reset the container's rotation
     };
 
-    // Expose the respawn function to the parent component
+    // Expose the respawn and sound functions to the parent component
     useImperativeHandle(ref, () => ({
       respawn,
+      playVictorySound,
+      playLostSound,
     }));
 
     return (

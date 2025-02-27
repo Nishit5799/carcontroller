@@ -86,30 +86,56 @@ const Experience = () => {
   }, [isTimerRunning]);
 
   const handleRaceEnd = () => {
+    // Stop the timer
     setIsTimerRunning(false);
+    clearInterval(timerRef.current); // Ensure the interval is cleared
+
+    // Calculate the final time and display the message
     let message = `Current Time: ${currentTime.toFixed(0)}s\n`;
-    if (currentTime < bestTime || bestTime === 0) {
+    let playVictorySound = false;
+    let playLostSound = false;
+
+    if (bestTime === 0) {
+      // First time completing the race
       setBestTime(currentTime);
       message += "New Best Time!";
+      playVictorySound = true; // Play victory sound for the first time
+    } else if (currentTime < bestTime) {
+      // New best time
+      setBestTime(currentTime);
+      message += "New Best Time!";
+      playVictorySound = true; // Play victory sound
     } else {
+      // Did not beat the best time
       const difference = (currentTime - bestTime).toFixed(0);
       message += `You were ${difference}s slower than your best time.`;
+      playLostSound = true; // Play lost sound
     }
+
     setPopupMessage(message);
     setShowPopup(true);
     hasStarted.current = false;
+
+    // Play the appropriate sound
+    if (carControllerRef.current) {
+      if (playVictorySound) {
+        carControllerRef.current.playVictorySound();
+      } else if (playLostSound) {
+        carControllerRef.current.playLostSound();
+      }
+    }
   };
 
   const handleStart = () => {
     if (!hasStarted.current) {
-      setCurrentTime(0);
+      setCurrentTime(0); // Reset the timer to 0
       setIsTimerRunning(true);
       hasStarted.current = true;
     }
   };
 
   const handleReset = () => {
-    setCurrentTime(0);
+    setCurrentTime(0); // Reset the timer to 0
     setIsTimerRunning(false);
     setShowPopup(false);
     hasStarted.current = false;
