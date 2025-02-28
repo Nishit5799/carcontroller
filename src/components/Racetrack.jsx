@@ -12,38 +12,41 @@ export default function Racetrack(props) {
           position={[165, -40, 170]}
           scale={1.719}
         >
-         
           <mesh
             geometry={nodes.Object_4.geometry}
             material={materials.material_10}
+            receiveShadow // Enable shadow receiving
           />
-
           <mesh
             geometry={nodes.Object_6.geometry}
             material={materials.material_12}
+            receiveShadow // Enable shadow receiving
           />
           <mesh
             geometry={nodes.Object_7.geometry}
             material={materials.material_13}
+            receiveShadow // Enable shadow receiving
           />
-
           <mesh
             geometry={nodes.Object_12.geometry}
             material={materials.material_18}
+            receiveShadow // Enable shadow receiving
+            castShadow
           />
           <mesh
             geometry={nodes.Object_13.geometry}
             material={materials.material_19}
+            receiveShadow // Enable shadow receiving
           />
-
           <mesh
             geometry={nodes.Object_18.geometry}
             material={materials.material_4}
+            receiveShadow // Enable shadow receiving
           />
-
           <mesh
             geometry={nodes.Object_20.geometry}
             material={materials.material_6}
+            receiveShadow // Enable shadow receiving
           />
         </group>
       </RigidBody>
